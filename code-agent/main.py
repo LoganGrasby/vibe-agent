@@ -16,13 +16,11 @@ from google.adk.sessions import DatabaseSessionService, Session
 from google.adk.artifacts import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 
-# --- Configuration ---
 DB_BASE_PATH = Path(os.getenv("DB_PATH", "~/.sessions")).expanduser()
 APP_NAME = "self-evolving-agent"
 TENANT_ID = "default"
 AGENT_FILE = "agent.py"
 
-# --- Helper functions ---
 def sanitize_id(val: str) -> str:
     "Return a string that is safe to be used as an ADK app / user id."
     cleaned = "".join(ch if ch.isalnum() else "_" for ch in val)
@@ -43,7 +41,7 @@ def check_and_handle_restart_flag():
     restart_flag = agent_path.with_suffix(agent_path.suffix + ".needs_restart")
     
     if restart_flag.exists():
-        restart_flag.unlink()  # Remove the flag
+        restart_flag.unlink() 
         return True
     return False
 
@@ -70,20 +68,17 @@ def revert_agent_code():
     error_path = agent_path.with_suffix(agent_path.suffix + ".error")
     
     if backup_path.exists():
-        # Save error information
         error_info = {
             "timestamp": time.time(),
             "error": "Code import failed after update",
             "traceback": traceback.format_exc()
         }
         
-        # Test if we can import the backup first
         backup_content = backup_path.read_text()
         agent_path.write_text(backup_content)
         
         success, error = test_agent_import()
         if success:
-            # Save error info for the agent to see
             with open(error_path, 'w') as f:
                 json.dump(error_info, f)
             print("[Recovery] Successfully reverted to backup code")
@@ -164,7 +159,6 @@ async def invoke_agent(
 async def main_loop():
     """Main function to run the agent with automatic restart on code updates."""
     
-    # Check if we need to resume from a specific session
     session_info = os.environ.get("RESUME_SESSION_INFO")
     if session_info:
         session_data = json.loads(session_info)
@@ -196,7 +190,6 @@ async def main_loop():
 
     try:
         while True:
-            # Check for restart flag
             if check_and_handle_restart_flag():
                 restart_requested = True
                 break
@@ -215,7 +208,6 @@ async def main_loop():
                 print(f"INVOKING WITH (Session: {current_session_id}, Msg #: {message_counter + 1}): {current_task}")
                 print('='*60 + "\n")
                 
-                # Set session info in environment for agent to access
                 os.environ["CURRENT_SESSION_INFO"] = json.dumps({
                     "user_id": user_id,
                     "session_id": current_session_id,
@@ -231,12 +223,10 @@ async def main_loop():
                 )
                 message_counter += 1
                 
-                # Check if code was updated (restart flag will be set by update_agent_code)
                 if check_and_handle_restart_flag():
                     restart_requested = True
                     break
 
-                # Session rotation logic
                 if message_counter % SESSION_MESSAGE_LIMIT == 0:
                     print(f"\n[Session Management] Reached {SESSION_MESSAGE_LIMIT} messages in session {current_session_id}.")
                     current_session_id = str(uuid.uuid4())
@@ -261,18 +251,15 @@ async def main_loop():
         
         if restart_requested:
             print("[Restart] Initiating automatic restart...")
-            # Prepare session info for resume
             resume_info = {
                 "user_id": user_id,
                 "session_id": current_session_id,
                 "message_counter": message_counter
             }
             
-            # Start new process with session info
             env = os.environ.copy()
             env["RESUME_SESSION_INFO"] = json.dumps(resume_info)
             
-            # Use sys.executable to ensure we use the same Python interpreter
             subprocess.Popen([sys.executable, __file__], env=env)
             sys.exit(0)
 

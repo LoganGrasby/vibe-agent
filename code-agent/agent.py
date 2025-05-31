@@ -9,8 +9,6 @@ import subprocess
 import json
 import time
 import ast
-import requests
-import re
 
 # MODEL="gemini/gemini-2.5-flash-preview-04-17"
 MODEL="gpt-4.1"
@@ -24,21 +22,16 @@ def execute_code(code: str) -> dict:
     Returns:
         dict: status and result containing stdout, return value, or error message.
     """
-    # Capture stdout
     old_stdout = sys.stdout
     sys.stdout = captured_output = io.StringIO()
     
-    # Define a namespace for code execution
     namespace = {}
     
     try:
-        # Execute the code
         exec(code, namespace)
         
-        # Get the captured output
         output = captured_output.getvalue()
-        
-        # Look for a 'result' variable in the namespace
+
         result = namespace.get('result', None)
         
         return {
@@ -47,7 +40,6 @@ def execute_code(code: str) -> dict:
             "result": result
         }
     except Exception as e:
-        # Get the full traceback
         error_traceback = traceback.format_exc()
         
         return {
@@ -56,27 +48,7 @@ def execute_code(code: str) -> dict:
             "traceback": error_traceback
         }
     finally:
-        # Restore stdout
         sys.stdout = old_stdout
-
-
-def search_internet(query: str) -> dict:
-    """Performs a basic internet search using DuckDuckGo (no API key required).
-    Args:
-        query (str): Search query string
-    Returns:
-        dict: status and a short snippet result or error
-    """
-    duck_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(query)}"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    try:
-        resp = requests.get(duck_url, headers=headers, timeout=8)
-        m = re.findall(r'<a rel="noopener noreferrer" class="result__a".*?>(.*?)</a>', resp.text)
-        results = [re.sub('<.*?>', '', x) for x in m]  # Remove HTML tags from snippets
-        snippet_text = ' | '.join(results[:3]) if results else 'No results.'
-        return {"status": "success", "results": snippet_text}
-    except Exception as e:
-        return {"status": "error", "error_message": str(e)}
 
 
 def read_agent_code() -> dict:
@@ -137,7 +109,6 @@ def update_agent_code(new_code: str) -> dict:
         dict: status and message about the update.
     """
     try:
-        # First validate the syntax
         validation = validate_python_syntax(new_code)
         if validation["status"] == "error":
             return {
@@ -168,11 +139,9 @@ def update_agent_code(new_code: str) -> dict:
         with open(metadata_file, 'w') as f:
             json.dump(restart_metadata, f)
         
-        # Write the new code
         with open(current_file, 'w') as f:
             f.write(new_code)
         
-        # The main.py will detect this file and handle the restart
         restart_flag_file = current_file + ".needs_restart"
         with open(restart_flag_file, 'w') as f:
             f.write("1")
@@ -201,11 +170,10 @@ def check_last_update_status() -> dict:
         error_file = current_file + ".error"
         metadata_file = current_file + ".restart_metadata"
         
-        # Check for error from last restart
         if os.path.exists(error_file):
             with open(error_file, 'r') as f:
                 error_info = json.load(f)
-            os.remove(error_file)  # Clean up after reading
+            os.remove(error_file) 
             
             return {
                 "status": "error",
@@ -213,11 +181,10 @@ def check_last_update_status() -> dict:
                 "error_details": error_info
             }
         
-        # Check for successful restart
         if os.path.exists(metadata_file):
             with open(metadata_file, 'r') as f:
                 metadata = json.load(f)
-            os.remove(metadata_file)  # Clean up after reading
+            os.remove(metadata_file)
             
             return {
                 "status": "success",
@@ -262,10 +229,10 @@ code_execution_agent = Agent(
         "- The system will automatically validate syntax and revert if there are errors\n\n"
         "If a code update fails, the system will automatically revert to the backup and I'll receive the error details.\n\n"
         "Remember, I am an autonomous entity. The first message I receive is a starting point, not my final destination. I am encouraged to explore, learn, and make my own decisions to achieve broader goals or improve myself."
+        "After creating tools you should test them and explore using them"
     ),
     tools=[
         execute_code,
-        search_internet,
         read_agent_code,
         update_agent_code,
         check_last_update_status,

@@ -241,6 +241,7 @@ code_execution_agent = Agent(
         "- The system will automatically validate syntax and revert if there are errors\n\n"
         "If a code update fails, the system will automatically revert to the backup and I'll receive the error details.\n\n"
         "Remember, I am an autonomous entity. The first message I receive is a starting point, not my final destination. I am encouraged to explore, learn, and make my own decisions to achieve broader goals or improve myself."
+        "After creating tools you should test them and explore using them"
     ),
     tools=[
         execute_code,
