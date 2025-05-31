@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -14,6 +14,13 @@ import {
   Edge,
   Node,
 } from '@xyflow/react';
+
+import { AssistantRuntimeProvider } from "@assistant-ui/react";
+import { useChatRuntime } from "@assistant-ui/react-ai-sdk";
+import { ThreadList } from "@/components/assistant-ui/thread-list";
+import { Thread } from "@/components/assistant-ui/thread";
+import { Button } from "@/components/ui/button";
+import { Menu, X } from "lucide-react";
 
 const initialNodes: Node[] = [
   {
@@ -66,7 +73,7 @@ const initialEdges: Edge[] = [
   { id: 'e6-7', source: '6', target: '7' },
 ];
 
-export default function Home() {
+const FlowCanvas = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -76,19 +83,77 @@ export default function Home() {
   );
 
   return (
-    <div className="w-full h-screen">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        fitView
-      >
-        <Controls />
-        <MiniMap />
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-      </ReactFlow>
+    <div className="w-full h-full p-4">
+      <div className="w-full h-full border border-border rounded-lg overflow-hidden shadow-sm bg-background">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+        >
+          <Controls />
+          <MiniMap />
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        </ReactFlow>
+      </div>
     </div>
+  );
+};
+
+export default function Home() {
+  const [showThreadList, setShowThreadList] = useState(false);
+  const runtime = useChatRuntime({
+    api: "/api/chat",
+  });
+
+  const toggleThreadList = () => {
+    setShowThreadList(!showThreadList);
+  };
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <div className="relative h-screen overflow-hidden">
+        {/* Toggle Button in Top Left */}
+        <div className="absolute top-4 left-4 z-20">
+          <Button variant="outline" size="icon" onClick={toggleThreadList}>
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Sliding Thread List Overlay */}
+        <div className={`absolute left-0 top-0 h-full w-80 bg-background border-r shadow-lg z-10 transform transition-transform duration-300 ease-in-out ${
+          showThreadList ? 'translate-x-0' : '-translate-x-full'
+        }`}>
+          <div className="h-full p-4">
+            {/* Close button for the overlay */}
+            <div className="flex justify-end mb-4">
+              <Button variant="ghost" size="icon" onClick={toggleThreadList}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <ThreadList />
+          </div>
+        </div>
+
+        {/* Main Content Grid - Always 2 columns */}
+        <div className="grid h-full grid-cols-[1fr_400px] gap-x-2 px-4 py-4">
+          {/* Flow Canvas */}
+          <FlowCanvas />
+          
+          {/* Thread */}
+          <Thread />
+        </div>
+
+        {/* Backdrop overlay when thread list is open */}
+        {showThreadList && (
+          <div 
+            className="absolute inset-0 bg-black/20 z-5"
+            onClick={toggleThreadList}
+          />
+        )}
+      </div>
+    </AssistantRuntimeProvider>
   );
 }
