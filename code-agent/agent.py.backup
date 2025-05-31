@@ -9,8 +9,6 @@ import subprocess
 import json
 import time
 import ast
-import requests
-import re
 
 # MODEL="gemini/gemini-2.5-flash-preview-04-17"
 MODEL="gpt-4.1"
@@ -58,25 +56,6 @@ def execute_code(code: str) -> dict:
     finally:
         # Restore stdout
         sys.stdout = old_stdout
-
-
-def search_internet(query: str) -> dict:
-    """Performs a basic internet search using DuckDuckGo (no API key required).
-    Args:
-        query (str): Search query string
-    Returns:
-        dict: status and a short snippet result or error
-    """
-    duck_url = f"https://html.duckduckgo.com/html/?q={requests.utils.quote(query)}"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    try:
-        resp = requests.get(duck_url, headers=headers, timeout=8)
-        m = re.findall(r'<a rel="noopener noreferrer" class="result__a".*?>(.*?)</a>', resp.text)
-        results = [re.sub('<.*?>', '', x) for x in m]  # Remove HTML tags from snippets
-        snippet_text = ' | '.join(results[:3]) if results else 'No results.'
-        return {"status": "success", "results": snippet_text}
-    except Exception as e:
-        return {"status": "error", "error_message": str(e)}
 
 
 def read_agent_code() -> dict:
@@ -265,7 +244,6 @@ code_execution_agent = Agent(
     ),
     tools=[
         execute_code,
-        search_internet,
         read_agent_code,
         update_agent_code,
         check_last_update_status,
